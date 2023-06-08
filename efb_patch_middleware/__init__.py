@@ -440,58 +440,35 @@ class PatchMiddleware(Middleware):
         msg_prefix = ""  # For group member name
         if isinstance(msg.chat, GroupChat):
             self.logger.debug("[%s] Message is from a group. Sender: %s", msg.uid, msg.author)
-            ### patch modified 👇 ###
-            msg_prefix = self.get_display_name(msg.author)
+            msg_prefix = msg.author.long_name
 
         if singly_linked:
             if msg_prefix:  # if group message
                 msg_template = f"{msg_prefix}:"
             else:
                 if msg.chat != msg.author:
-                    ### patch modified 👇 ###
-                    msg_template = f"{self.get_display_name(msg.author)}:"
+                    msg_template = f"{msg.author.long_name}:"
                 else:
                     msg_template = ""
         elif isinstance(msg.chat, PrivateChat):
             emoji_prefix = msg.chat.channel_emoji + Emoji.USER
-            ### patch modified 👇 ###
-            name_prefix = self.get_display_name(msg.chat)
+            name_prefix = msg.chat.long_name
             if msg.chat.other != msg.author:
-                ### patch modified 👇 ###
-                name_prefix += f", {self.get_display_name(msg.author)}"
-            msg_template = f"{emoji_prefix} #{name_prefix}:"
+                name_prefix += f", {msg.author.long_name}"
+            msg_template = f"{emoji_prefix} {name_prefix}:"
         elif isinstance(msg.chat, GroupChat):
             emoji_prefix = msg.chat.channel_emoji + Emoji.GROUP
-            ### patch modified 👇 ###
-            name_prefix = self.get_display_name(msg.chat)
-            msg_template = f"{emoji_prefix} {msg_prefix} [#{name_prefix}]:"
+            name_prefix = msg.chat.long_name
+            msg_template = f"{emoji_prefix} {msg_prefix} [{name_prefix}]:"
         elif isinstance(msg.chat, SystemChat):
             emoji_prefix = msg.chat.channel_emoji + Emoji.SYSTEM
-            ### patch modified 👇 ###
-            name_prefix = self.get_display_name(msg.chat)
+            name_prefix = msg.chat.long_name
             if msg.chat.other != msg.author:
-                name_prefix += f", {self.get_display_name(msg.author)}"
-            msg_template = f"{emoji_prefix} #{name_prefix}:"
+                name_prefix += f", {msg.author.long_name}"
+            msg_template = f"{emoji_prefix} {name_prefix}:"
         else:
-            ### patch modified 👇 ###
-            msg_template = f"{Emoji.UNKNOWN} {self.get_display_name(msg.author)} ({msg.chat.display_name}):"
+            msg_template = f"{Emoji.UNKNOWN} {msg.author.long_name} ({msg.chat.display_name}):"
         return msg_template
-
-    def get_display_name(self, chat: Chat) -> str:
-        # 群成员昵称不存在时获取联系人昵称
-        if not chat.alias:
-            # self.logger.log(99, 'get display_name %s', chat.__dict__)
-            cache = self.chat_manager.get_chat(chat.module_id, chat.uid)
-            if not cache:
-                # self.logger.log(99, 'no cache: %s', chat.uid)
-                chat.alias = self.db.get_slave_chat_contact_alias(chat.uid)
-            else:
-                # self.logger.log(99, 'get cache %s', cache.__dict__)
-                chat.alias = cache.alias
-
-        # self.logger.log(99, "chat: [%s]", chat.__dict__)
-        return chat.name if not chat.alias or chat.alias in chat.name \
-            else (chat.alias if chat.name in chat.alias else f"{chat.alias} ({chat.name})")
 
     # efb_telegram_master/slave_message.py
     def slave_message_image(self, msg: Message, tg_dest: TelegramChatID, msg_template: str, reactions: str,
